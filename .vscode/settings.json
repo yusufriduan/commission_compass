@@ -1,3 +1,4 @@
 {
-    "cmake.sourceDirectory": "/home/yusufriduan/commission_compass/linux/flutter"
+    "cmake.sourceDirectory": "/home/yusufriduan/commission_compass/linux/flutter",
+    "cmake.ignoreCMakeListsMissing": true
 }
