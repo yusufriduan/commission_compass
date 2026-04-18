@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter/foundation.dart';
 
 void main() {
   runApp(const MyApp());
@@ -25,6 +27,14 @@ class MyApp extends StatelessWidget {
 class MyHomePage extends StatelessWidget {
   const MyHomePage({super.key});
 
+  double returnFontSize(){
+    if (kIsWeb){
+      return 22;
+    } else {
+      return 18;
+    }
+  }
+
   @override
   Widget build(BuildContext context){
     return Scaffold(
@@ -33,13 +43,15 @@ class MyHomePage extends StatelessWidget {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               "Commission Compass",
-                style: TextStyle(fontSize: 24),
+                style: TextStyle(
+                  fontSize: returnFontSize(), 
+                  fontWeight: FontWeight(800)),
             ),
             Transform.translate(
               offset: const Offset(3.0, 0.0), // Shifting 2 pixels to the left
-              child: const Text("AI-powered commission decision assistant", style: TextStyle(fontSize: 12),),
+              child: const Text("AI-powered commission decision assistant", style: TextStyle(fontSize: 10),),
             )
             // Text(
             //   "AI-powered commission decision assistant",
@@ -55,14 +67,47 @@ class MyHomePage extends StatelessWidget {
               height: 40,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(10),
-                color: Colors.blueAccent,
+                color: Colors.grey[400],
               ),
               
               
             ),
           )
-          
         ),
+
+        actions: [
+          Transform.translate(
+            offset: Offset(-15, 0),
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: Container(
+                width: 100,
+                height: 40,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                  color: Colors.grey[400]
+                ),
+                alignment: Alignment.center,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text("New chat", style: TextStyle(fontSize: 12)),
+                    Transform.translate(
+                      offset: Offset(5, 0),
+                      child: SvgPicture.asset(
+                        'assets/message-plus.svg',
+                        width: 30,
+                        height: 30,
+                        semanticsLabel: 'New Chat',
+                      )
+                    )
+                  ] 
+                )
+              )
+            )
+          )
+        ],
 
         elevation: 10,
         shadowColor: Colors.black,
