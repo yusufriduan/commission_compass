@@ -67,45 +67,52 @@ class CommissionCompassBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      spacing: 15,
-      children: [
-        Column(
-          children: [
-            Text("How can I help you decide?", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22)),
-            Text("Ask me about any freelance commission or opportunity"),
-          ]
-        ),
-
-        Row(
-          spacing: 15,
+    return(
+      SingleChildScrollView(
+        child: 
+        Padding(
+          padding: EdgeInsets.only(top: 40, bottom: 40), 
+          child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          spacing: 15,
           children: [
-            SizedBox(
-              width: 250,
-              child: TextField(
-                obscureText: false,
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(),
-                ),
-              ),
+            Column(
+              children: [
+                Text("How can I help you decide?", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22)),
+                Text("Ask me about any freelance commission or opportunity"),
+              ]
             ),
-            FilledButton.icon(
-              onPressed: () {},
-              icon: Icon(Icons.send),
-              label: Text("Send"),
-              style: IconButton.styleFrom(
-              backgroundColor: Colors.grey[400],
-              foregroundColor: Colors.black,
-              padding: EdgeInsets.all(16)
-            ),)
+
+            Row(
+              spacing: 15,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 250,
+                  child: TextField(
+                    obscureText: false,
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                FilledButton.icon(
+                  onPressed: () {},
+                  icon: Icon(Icons.send),
+                  label: Text("Send"),
+                  style: IconButton.styleFrom(
+                  backgroundColor: Colors.grey[400],
+                  foregroundColor: Colors.black,
+                  padding: EdgeInsets.all(16)
+                ),)
+              ],
+            ),
+            
+            AIResponse(userPrompt: "Yusuf or Elsa", keyReasoningContent: "bla baadadasdandjand", prosList: ["yusuf", "jason"], consList: ["shawn"], quantifiableImpactContent: "bla vla bla bla m,arcus", suggestionsContent: "we are one team fr fr") 
           ],
-        ),
-        
-        AIResponse(userPrompt: "Yusuf or Elsa", keyReasoningContent: "bla baadadasdandjand", prosList: ["yusuf", "jason"], consList: ["shawn"], quantifiableImpactContent: "bla vla bla bla m,arcus", suggestionsContent: "we are one team fr fr") 
-      ],
-    );
+        ))
+      )
+    ); 
   }
 }
 // each sub section of the ai response (after the final decision section)
@@ -200,8 +207,7 @@ class AIResponse extends StatelessWidget{
   @override
   Widget build(BuildContext context) {
     return(
-      SingleChildScrollView(
-        child: Column(
+      Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // user's prompt
@@ -269,8 +275,7 @@ class AIResponse extends StatelessWidget{
             ResponseSection(header: "Quantifiable Impacts on You 🫵", response: "bla bla bla bla bla"),
             ResponseSection(header: "Suggestions 🤑", response: "bla bla bla bla bla")
           ],
-        ),
-      )
+        )
     );
   }
 }
