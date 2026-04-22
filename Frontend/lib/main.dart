@@ -245,7 +245,7 @@ class AIResponse extends StatelessWidget{
               )
             ),
 
-            ResponseSection(header: "Key Reasoning 💻", response: "bla bla bla bla bla"),
+            ResponseSection(header: "Key Reasoning 💻", response: keyReasoningContent),
             ResponseSection(
               header: "Pros and Cons 🥶", 
               response: Padding(
@@ -271,8 +271,8 @@ class AIResponse extends StatelessWidget{
                 )
               ),
             ),
-            ResponseSection(header: "Quantifiable Impacts on You 🫵", response: "bla bla bla bla bla"),
-            ResponseSection(header: "Suggestions 🤑", response: "bla bla bla bla bla")
+            ResponseSection(header: "Quantifiable Impacts on You 🫵", response: quantifiableImpactContent),
+            ResponseSection(header: "Suggestions 🤑", response: suggestionsContent)
           ],
         )
     );
