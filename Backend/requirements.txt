@@ -4,3 +4,7 @@ typing-extensions>=4.0.0
 cachetools>=4.2.2
 zai-sdk
 openai
+fastapi
+fastmcp
+mcp
+mcp.client.stdio
