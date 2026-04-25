@@ -6,6 +6,5 @@ zai-sdk
 openai
 fastapi
 uvicorn
-pydantic
 mcp
 fastmcp
