@@ -344,7 +344,13 @@ class _CommissionCompassPageState extends State<CommissionCompassPage> {
   }
 
   Future<Map<String, dynamic>> getDecision(String userInput) async {
-    final String baseUrl = "http://10.0.2.2:8000";
+
+    String baseUrl;
+    if(Platform.isAndroid){
+      baseUrl = "http://10.0.2.2:8000";
+    } else {
+      baseUrl = "127.0.0.1:8000";
+    }
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/decision'),
@@ -353,6 +359,7 @@ class _CommissionCompassPageState extends State<CommissionCompassPage> {
       );
 
       if (response.statusCode == 200) {
+        print(response.body);
         return jsonDecode(response.body);
       } else {
         throw Exception("Server Error: ${response.statusCode}");
