@@ -1,31 +1,22 @@
 import os
+from dotenv import load_dotenv
 import json
-import asyncio
-from main import commissionRequest
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from openai import AsyncOpenAI
+from fastapi import HTTPException
+from openai import OpenAI
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-# Z.AI Configuration (GLM-5.1)
-client = AsyncOpenAI(
-    api_key=os.getenv("ZAI_API_KEY"),
-    base_url="https://api.z.ai/api/paas/v4/"
-)
+load_dotenv()
 
-# MCP Connection Parameters
-mcp_params = StdioServerParameters(
-    command="python",
-    args=["mcp_server.py"]
-)
+# Configuration
+client = OpenAI(api_key=os.getenv("ZAI_API_KEY"), base_url="https://api.ilmu.ai/v1/")
+mcp_params = StdioServerParameters(command="python", args=["mcp_server.py"])
 
-async def process_commission(data: commissionRequest):
+async def process_commission(data):
     async with stdio_client(mcp_params) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
             
-            # We get our Tools of the Trade
             mcp_tools = await session.list_tools()
             zai_tools = [{
                 "type": "function",
@@ -36,57 +27,58 @@ async def process_commission(data: commissionRequest):
                 }
             } for t in mcp_tools.tools]
 
-            # 2. We organise how the agent will process data
-            
+            # The System Prompt now matches your Flutter AIResponse parameters
             messages = [
                 {
                     "role": "system", 
                     "content": (
-                        "You are a Commission Decision Agent. Use the calculate_complexity_score tool "
-                        "to assess the task. Then use get_market_benchmark to find the standard rate. "
-                        "Return a final JSON with: 'verdict' (Accept/Negotiate/Reject), 'reasoning', "
-                        "and 'counter_offer'."
+                        "You are a Freelance Decision Agent. Analyze the user's request. "
+                        "1. Use tools to find benchmarks and complexity. "
+                        "2. If input is missing (budget/hours), estimate them based on the scope. "
+                        "3. Return a JSON object with these EXACT keys: "
+                        "'decision' (String), "
+                        "'keyReasoningContent' (String), "
+                        "'prosList' (List of Strings), "
+                        "'consList' (List of Strings), "
+                        "'quantifiableImpactContent' (String), "
+                        "'suggestionsContent' (String)."
                     )
                 },
-                {"role": "user", "content": f"New Request: {data.model_dump_json()}"}
+                {"role": "user", "content": f"User Prompt: {data.user_input}"}
             ]
 
-        for _ in range(5):
-                # Await the async client
-                response = await client.chat.completions.create(
-                    model="glm-5.1",
+            # Agentic Loop
+            response = client.chat.completions.create(
+                model="ilmu-glm-5.1",
+                messages=messages,
+                tools=zai_tools,
+                tool_choice="auto"
+            )
+
+            msg = response.choices[0].message
+            if msg.tool_calls:
+                messages.append(msg)
+                for tool_call in msg.tool_calls:
+                    result = await session.call_tool(
+                        tool_call.function.name, 
+                        json.loads(tool_call.function.arguments)
+                    )
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": tool_call.id,
+                        "name": tool_call.function.name,
+                        "content": str(result.content)
+                    })
+                
+                # Final pass to generate the Flutter-compatible JSON
+                final_output = client.chat.completions.create(
+                    model="ilmu-glm-5.1",
                     messages=messages,
                     tools=zai_tools,
                     tool_choice="auto"
                 )
-
-                msg = response.choices[0].message
                 
-                if msg.tool_calls:
-                    messages.append(msg)
-                    for tool_call in msg.tool_calls:
-                        result = await session.call_tool(
-                            tool_call.function.name, 
-                            json.loads(tool_call.function.arguments)
-                        )
-                        messages.append({
-                            "role": "tool",
-                            "tool_call_id": tool_call.id,
-                            "name": tool_call.function.name,
-                            "content": str(result.content)
-                        })
-                    continue # Loop back to let the GLM evaluate the new tool data
-                
-                else:
-                    try:
-                        final_output = await client.chat.completions.create(
-                            model="glm-5.1",
-                            messages=messages,
-                            response_format={"type": "json_object"}
-                        )
-                        return json.loads(final_output.choices[0].message.content)
-                    except json.JSONDecodeError:
-                        raise HTTPException(status_code=500, detail="LLM returned invalid JSON")
+                # This returns the dictionary that FastAPI will send to Flutter
+                return json.loads(final_output.choices[0].message.content)
 
-            # If the loop exhausts all iterations without finishing
-        raise HTTPException(status_code=500, detail="Decision Loop exceeded maximum tool iteration")
+    raise HTTPException(status_code=500, detail="Decision Loop Failed")

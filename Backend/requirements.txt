@@ -5,6 +5,7 @@ cachetools>=4.2.2
 zai-sdk
 openai
 fastapi
-fastmcp
+uvicorn
+pydantic
 mcp
-mcp.client.stdio
+fastmcp
