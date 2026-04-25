@@ -1,35 +1,54 @@
 from fastmcp import FastMCP
 
-mcp = FastMCP("CommissonCompass")
-
-# Reminder to self: Update this part (At least add more specifity to the tools in mcp)
+mcp = FastMCP("CommissionCompass")
 
 @mcp.tool()
-def calculate_complexity_score(scope_description: str, technical_stack: str) -> dict:
-    """Calculates a numerical complexity score (1-10) based on stack and scope."""
-    complexity_map = {"C++": 1.5, "C": 1.4, "OS": 1.8, "Python": 1.0}
+def calculate_complexity_score(scope_description: str, category: str = "General", urgency: str = "normal") -> dict:
+    """Calculates a complexity score (1-10) for any freelance task."""
+    score = 5.0
+    risk_factors = []
     
-    base_complexity = 5.0
-    multiplier = sum([complexity_map.get(s, 1.0) for s in technical_stack.split(",")]) / 2
-    
-    scope_penalty = len(scope_description.split()) / 100 
-    
-    final_score = min(10.0, (base_complexity * multiplier) + scope_penalty)
+    # Analyze scope length
+    word_count = len(scope_description.split())
+    if word_count < 20:
+        score += 2.0
+        risk_factors.append("High Ambiguity: Scope is too short.")
+
+    # Apply urgency penalty
+    if urgency.lower() in ["high", "rush"]:
+        score += 1.5
+        risk_factors.append("Rush Job: Increased pressure.")
+
+    # Industry-specific weighting
+    category_modifiers = {
+        "Creative": 1.1,
+        "Technical": 1.3,
+        "Administrative": 0.8
+    }
+    score *= category_modifiers.get(category, 1.0)
     
     return {
-        "complexity_score": round(final_score, 2),
-        "risk_factors": ["High memory management overhead" if "C++" in technical_stack else "Low risk"]
+        "complexity_score": round(min(10.0, score), 2),
+        "risk_factors": risk_factors or ["Standard project parameters"]
     }
 
 @mcp.tool()
-def get_market_benchmark(role: str) -> float:
-    """Returns the 2026 average hourly rate for a specific role."""
+def get_market_benchmark(category: str = "General", specialization: str = "General") -> dict:
+    """Returns the 2026 average hourly rate for a specific field."""
     rates = {
-        "Systems Engineer": 155.0,
-        "Embedded Dev": 140.0,
-        "Generalist": 85.0
+        "Creative": {"General": 55.0, "Motion": 90.0, "Illustration": 65.0},
+        "Technical": {"General": 95.0, "AI/ML": 190.0, "Web": 80.0},
+        "Writing": {"General": 45.0, "Technical": 85.0}
     }
-    return rates.get(role, 100.0)
+    
+    cat_data = rates.get(category, {"General": 60.0})
+    hourly_rate = cat_data.get(specialization, cat_data["General"])
+    
+    return {
+        "average_hourly": hourly_rate,
+        "currency": "USD",
+        "trend": "Stable"
+    }
 
 if __name__ == "__main__":
     mcp.run()
