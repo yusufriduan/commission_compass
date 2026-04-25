@@ -16,13 +16,16 @@ app = FastAPI()
 class commissionRequest(BaseModel):
     client_name: str
     project_scope: str
+    technical_stack: str
     budget: float
     est_hours: float
     hourly_rate: float
     deadline_days: int
 
 @app.post("/decision")
-def make_decision(task: commissionRequest):
-    result = process_commission(task.dict())
-    return {"decision": result}
-
+async def make_decision(task: commissionRequest):
+    try:
+        result = await process_commission(task)
+        return {"decision": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

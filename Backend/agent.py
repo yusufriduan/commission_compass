@@ -4,14 +4,12 @@ import asyncio
 from main import commissionRequest
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from openai import OpenAI
+from openai import AsyncOpenAI
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-app = FastAPI()
-
 # Z.AI Configuration (GLM-5.1)
-client = OpenAI(
+client = AsyncOpenAI(
     api_key=os.getenv("ZAI_API_KEY"),
     base_url="https://api.z.ai/api/paas/v4/"
 )
@@ -22,7 +20,6 @@ mcp_params = StdioServerParameters(
     args=["mcp_server.py"]
 )
 
-@app.post("/api/v1/decide")
 async def process_commission(data: commissionRequest):
     async with stdio_client(mcp_params) as (read, write):
         async with ClientSession(read, write) as session:
@@ -54,37 +51,42 @@ async def process_commission(data: commissionRequest):
                 {"role": "user", "content": f"New Request: {data.model_dump_json()}"}
             ]
 
-            # 3. Agentic Loop (Reasoning + Tool Use)
-            response = client.chat.completions.create(
-                model="glm-5.1",
-                messages=messages,
-                tools=zai_tools,
-                tool_choice="auto"
-            )
-
-            # Call the tool
-            msg = response.choices[0].message
-            if msg.tool_calls:
-                messages.append(msg)
-                for tool_call in msg.tool_calls:
-                    # use the tool here
-                    result = await session.call_tool(
-                        tool_call.function.name, 
-                        json.loads(tool_call.function.arguments)
-                    )
-                    messages.append({
-                        "role": "tool",
-                        "tool_call_id": tool_call.id,
-                        "name": tool_call.function.name,
-                        "content": str(result.content)
-                    })
-                
-                # Final rumination and structured output
-                final_output = client.chat.completions.create(
+        for _ in range(5):
+                # Await the async client
+                response = await client.chat.completions.create(
                     model="glm-5.1",
                     messages=messages,
-                    response_format={"type": "json_object"}
+                    tools=zai_tools,
+                    tool_choice="auto"
                 )
-                return json.loads(final_output.choices[0].message.content)
 
-    raise HTTPException(status_code=500, detail="Decision Loop Failed")
+                msg = response.choices[0].message
+                
+                if msg.tool_calls:
+                    messages.append(msg)
+                    for tool_call in msg.tool_calls:
+                        result = await session.call_tool(
+                            tool_call.function.name, 
+                            json.loads(tool_call.function.arguments)
+                        )
+                        messages.append({
+                            "role": "tool",
+                            "tool_call_id": tool_call.id,
+                            "name": tool_call.function.name,
+                            "content": str(result.content)
+                        })
+                    continue # Loop back to let the GLM evaluate the new tool data
+                
+                else:
+                    try:
+                        final_output = await client.chat.completions.create(
+                            model="glm-5.1",
+                            messages=messages,
+                            response_format={"type": "json_object"}
+                        )
+                        return json.loads(final_output.choices[0].message.content)
+                    except json.JSONDecodeError:
+                        raise HTTPException(status_code=500, detail="LLM returned invalid JSON")
+
+            # If the loop exhausts all iterations without finishing
+        raise HTTPException(status_code=500, detail="Decision Loop exceeded maximum tool iteration")
