@@ -1,5 +1,6 @@
 import 'dart:io';
-
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -242,23 +243,6 @@ class AIResponse extends StatelessWidget{
       Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // user's prompt
-            // Padding(
-            //   padding: const EdgeInsets.only(right: 10, top: 40),
-            //   child: Align(
-            //     alignment: Alignment.centerRight,
-            //     child: ClipPath(
-            //       clipper: MessageBoxClipper(),
-            //       child: Container(
-            //         width: 180,
-            //         padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 26),
-            //         color: Colors.blue,
-            //         child: Text(userPrompt),
-            //       ),
-            //     )
-            //   ),
-            // ),
-            
             // AI response
             Padding(
               padding: EdgeInsets.only(left: 10, top: 40, bottom: 20),
@@ -279,37 +263,60 @@ class AIResponse extends StatelessWidget{
             ),
 
             ResponseSection(header: "Key Reasoning 💻", response: keyReasoningContent),
-            ResponseSection(
-              header: "Pros and Cons 🥶", 
-              response: Padding(
-                padding: EdgeInsets.only(left: 10, top: 10, bottom: 20),
-                child: Table(
-                  defaultColumnWidth: FixedColumnWidth(150), 
-                  // columnWidths: const {
-                  //   0: FlexColumnWidth(1),
-                  //   1: FlexColumnWidth(1),
-                  // },
-                  defaultVerticalAlignment: TableCellVerticalAlignment.middle, 
-                  border: TableBorder.all(color: Colors.black, width: 1),
-                  children: [
-                    TableRow(
-                      children: [
-                        Center(child: Text("Pros")),
-                        Center(child: Text("Cons"))
-                      ]
-                    ),
+            if(prosList.isNotEmpty && consList.isNotEmpty)
+              ResponseSection(
+                header: "Pros and Cons 🥶", 
+                response: Padding(
+                  padding: EdgeInsets.only(left: 10, top: 10, bottom: 20),
+                  child: Table(
+                    defaultColumnWidth: FixedColumnWidth(150), 
+                    // columnWidths: const {
+                    //   0: FlexColumnWidth(1),
+                    //   1: FlexColumnWidth(1),
+                    // },
+                    defaultVerticalAlignment: TableCellVerticalAlignment.middle, 
+                    border: TableBorder.all(color: Colors.black, width: 1),
+                    children: [
+                      TableRow(
+                        children: [
+                          Center(child: Text("Pros")),
+                          Center(child: Text("Cons"))
+                        ]
+                      ),
 
-                    prosAndConsList()
-                  ],
-                )
+                      prosAndConsList()
+                    ],
+                  )
+                ),
               ),
-            ),
-            ResponseSection(header: "Quantifiable Impacts on You 🫵", response: quantifiableImpactContent),
-            ResponseSection(header: "Suggestions 🤑", response: suggestionsContent)
+            
+            if (quantifiableImpactContent != "N/A" && quantifiableImpactContent.isNotEmpty)
+              ResponseSection(header: "Quantifiable Impacts on You 🫵", response: quantifiableImpactContent),
+
+            if(suggestionsContent.length > 1)
+              ResponseSection(header: "Suggestions 🤑", response: suggestionsContent)
           ],
         )
     );
   }
+}
+
+class APIFetchFormat{
+  final String decision;
+  final String keyReasoningContent;
+  final List<String> prosList;
+  final List<String> consList;
+  final String quantifiableImpactContent;
+  final String suggestionsContent;
+
+  const APIFetchFormat({ 
+    required this.decision,
+    required this.keyReasoningContent, 
+    required this.prosList,
+    required this.consList,
+    required this.quantifiableImpactContent,
+    required this.suggestionsContent
+  });
 }
 
 class CommissionCompassPage extends StatefulWidget {
@@ -322,6 +329,10 @@ class CommissionCompassPage extends StatefulWidget {
 class _CommissionCompassPageState extends State<CommissionCompassPage> {
   bool _showResponse = false;
   bool _hasResponse = false;
+  String curPrompt = "";
+
+  List<Map<String, dynamic>> _messageContent = [];
+
   final TextEditingController _promptController = TextEditingController();
 
   double returnFontSize(){
@@ -329,6 +340,65 @@ class _CommissionCompassPageState extends State<CommissionCompassPage> {
       return 22;
     } else {
       return 18;
+    }
+  }
+
+  Future<Map<String, dynamic>> getDecision(String userInput) async {
+    final String baseUrl = "http://10.0.2.2:8000";
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/decision'),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"user_input": userInput}),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception("Server Error: ${response.statusCode}");
+      }
+    } catch (e) {
+      throw Exception("Connection Failed: $e");
+    }
+  }
+
+  Future<APIFetchFormat> apiFetch(String prompt) async {
+    Map<String, dynamic> res = await getDecision(prompt);
+
+    return APIFetchFormat(
+      decision: res["decision"],
+      keyReasoningContent: res["keyReasoningContent"],
+      prosList: List<String>.from(res["prosList"] ?? []),
+      consList: List<String>.from(res["consList"] ?? []),
+      quantifiableImpactContent: res["quantifiableImpactContent"],
+      suggestionsContent: res["suggestionsContent"],
+    );
+  }
+  void sendPrompt() async {
+      if (_promptController.text.isNotEmpty) {
+      
+      setState(() {
+        _hasResponse = false;
+        _showResponse = true;
+        curPrompt = _promptController.text;
+        _promptController.clear();
+      });
+
+      APIFetchFormat newResponse = await apiFetch(curPrompt);
+      // await Future.delayed(const Duration(seconds: 5));
+
+      setState(() {
+        _messageContent.add({
+          "message": curPrompt,
+          "decision": newResponse.decision,
+          "keyReasoningContent": newResponse.keyReasoningContent,
+          "prosList": newResponse.prosList,
+          "consList": newResponse.consList,
+          "quantifiableImpactContent": newResponse.quantifiableImpactContent,
+          "suggestionsContent": newResponse.suggestionsContent
+        });
+        _hasResponse = true;
+      });
     }
   }
 
@@ -386,6 +456,7 @@ class _CommissionCompassPageState extends State<CommissionCompassPage> {
                     _showResponse = false;
                     _hasResponse = false;
                     _promptController.clear();
+                    _messageContent = [];
                   });
                 },
                   icon: Icon(Icons.add_comment_rounded),
@@ -418,13 +489,54 @@ class _CommissionCompassPageState extends State<CommissionCompassPage> {
                     if (_showResponse)
                       Column(
                         children: [
-                          MessageBox(userPrompt: _promptController.text),
-                          _hasResponse 
-                            ? AIResponse(decision: "Marcus should pay Shawn", keyReasoningContent: "Based on your input...", prosList: const ["shawn", "jason"], consList: const ["yusuf", "yusuf"], quantifiableImpactContent: "67 67 67 67 67", suggestionsContent: "elsa is here") 
-                            : const Padding(
-                                padding: EdgeInsets.only(top: 40, left: 10),
-                                child: Align(alignment: Alignment.centerLeft, child: Text("Thinking...", style: TextStyle(fontSize: 18))),
-                              ),
+                          // MessageBox(userPrompt: _promptController.text),
+                          // (_hasResponse 
+                          //   ? AIResponse(decision: "Marcus should pay Shawn", keyReasoningContent: "Based on your input...", prosList: const ["shawn", "jason"], consList: const ["yusuf", "yusuf"], quantifiableImpactContent: "67 67 67 67 67", suggestionsContent: "elsa is here") 
+                          //   : const Padding(
+                          //       padding: EdgeInsets.only(top: 40, left: 10),
+                          //       child: Align(alignment: Alignment.centerLeft, child: Text("Thinking...", style: TextStyle(fontSize: 18))),
+                          //     )),
+                              for(var res in  _messageContent) ...[
+                                MessageBox(userPrompt: res["message"]),
+                                AIResponse(decision: res["decision"], keyReasoningContent: res["keyReasoningContent"], prosList: res["prosList"], consList: res["consList"], quantifiableImpactContent: res["quantifiableImpactContent"], suggestionsContent: res["suggestionsContent"])
+                              ],
+
+                              if(!_hasResponse)...[
+                                MessageBox(userPrompt: curPrompt),
+                                const Padding(
+                                  padding: EdgeInsets.only(top: 40, left: 10),
+                                  child: Align(alignment: Alignment.centerLeft, child: Text("Thinking...", style: TextStyle(fontSize: 18))),
+                                )
+                              ],
+                                 
+                              // const Spacer(),
+                              Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Row(
+                                  spacing: 15,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    SizedBox(
+                                      width: 250,
+                                      child: TextField(
+                                        controller: _promptController,
+                                        decoration: InputDecoration(
+                                          border: OutlineInputBorder(),
+                                        ),
+                                      ),
+                                    ),
+                                    FilledButton.icon(
+                                      onPressed: _hasResponse ? sendPrompt : null,
+                                      icon: Icon(Icons.send),
+                                      label: Text("Send"),
+                                      style: IconButton.styleFrom(
+                                      backgroundColor: Colors.grey[400],
+                                      foregroundColor: Colors.black,
+                                      padding: EdgeInsets.all(16)
+                                    ),)
+                                  ],
+                                ),
+                              )
                         ],
                       )
                     else
@@ -432,19 +544,7 @@ class _CommissionCompassPageState extends State<CommissionCompassPage> {
                         child: Center(
                           child: CommissionCompassBody(
                             controller: _promptController, 
-                            onSend: () async {
-                               if (_promptController.text.isNotEmpty) {
-                                // don't forget to query backend
-                                setState(() => _showResponse = true);
-
-                                await Future.delayed(const Duration(seconds: 5));
-
-                                // 4. Update state to show the AIResponse
-                                setState(() {
-                                  _hasResponse = true;
-                                });
-                              }
-                            }
+                            onSend: sendPrompt
                           ),
                         ),
                       ),
@@ -470,3 +570,4 @@ class _CommissionCompassPageState extends State<CommissionCompassPage> {
     );
   }
 }
+
