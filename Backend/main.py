@@ -1,28 +1,18 @@
-# first build docker image: docker build -t backend-commission-compass
-# then create container: docker run -it --name backend-cc-container ./[DIRECTORY OF THE PYTHON FILE]
-
-# to run: docker start -ai backend-cc-container
-
+# first build docker image: docker build -t backend-commission-compass .
+# then create container: docker run -it --name backend-cc-container -p 8000:8000 -e ZAI_API_KEY="your_key_here" backend-commission-compass
 from agent import process_commission
-import os
-import json
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from pydantic import BaseModel
 
 app = FastAPI()
 
-# Base Structure: Gather and organise input herie, then the API will take the task to agent.py for processing
-
+# Matches the single input from your Flutter TextField
 class commissionRequest(BaseModel):
-    client_name: str
-    project_scope: str
-    budget: float
-    est_hours: float
-    hourly_rate: float
-    deadline_days: int
+    user_input: str 
 
 @app.post("/decision")
-def make_decision(task: commissionRequest):
-    result = process_commission(task.dict())
-    return {"decision": result}
-
+async def make_decision(task: commissionRequest):
+    # Calling the updated async process
+    result = await process_commission(task)
+    # Returning the result directly so it matches the expected JSON structure
+    return result
