@@ -1,6 +1,7 @@
 import os
 import json
 import re
+from cachetools import TTLCache
 from dotenv import load_dotenv
 from fastapi import HTTPException
 from openai import OpenAI
@@ -8,6 +9,8 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
 load_dotenv()
+
+session_cache = TTLCache(maxsize=100, ttl=600)
 
 client = OpenAI(
     api_key=os.getenv("ZAI_API_KEY"),
@@ -38,7 +41,27 @@ def safe_json_load(content: str):
 
 
 async def process_commission(data):
+    session_id = getattr(data, 'session_id', 'default_session')
 
+    if session_id not in session_cache:
+        session_cache[session_id] = [
+            {
+                "role": "system",
+                "content": (
+                    "You are a Freelance Decision Agent. Analyze the user request. "
+                    "1. Use tools to find benchmarks and complexity. "
+                    "2. ALWAYS return a JSON object with these keys: "
+                    "'decision', 'keyReasoningContent', 'prosList', 'consList', "
+                    "'quantifiableImpactContent', 'suggestionsContent'."
+                )
+            },
+        ]
+
+    messages = session_cache[session_id]
+    messages.append({
+        "role": "user",
+        "content": f"User Prompt: {data.user_input}"
+    })
     async with stdio_client(mcp_params) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()

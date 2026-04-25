@@ -17,7 +17,8 @@ app.add_middleware(
 
 # Matches the single input from your Flutter TextField
 class commissionRequest(BaseModel):
-    user_input: str 
+    user_input: str
+    session_id: str = "default_session"
 
 @app.post("/decision")
 async def make_decision(task: commissionRequest):

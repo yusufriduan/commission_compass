@@ -67,54 +67,58 @@ class CommissionCompassBody extends StatelessWidget {
   final TextEditingController controller;
   final VoidCallback onSend;
 
-  const CommissionCompassBody({super.key, required this.controller, required this.onSend});
+  final bool showResponse;
+  final bool hasResponse;
+
+  const CommissionCompassBody({super.key, required this.controller, required this.onSend, required this.showResponse, required this.hasResponse});
 
   @override
   Widget build(BuildContext context) {
-    return(
-      SingleChildScrollView(
-        child: 
-        Padding(
-          padding: EdgeInsets.only(top: 40, bottom: 40), 
-          child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          spacing: 15,
-          children: [
-            Column(
-              children: [
-                Text("How can I help you decide?", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22)),
-                Text("Ask me about any freelance commission or opportunity"),
-              ]
-            ),
+    return SingleChildScrollView(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        spacing: 15,
+        children: [
+          Column(
+            children: [
+              Visibility(
+                visible: showResponse ? false : true,
+                child: Text("How can I help you decide?", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22)),
+              ),
+              Visibility(
+                visible: showResponse ? false : true,
+                child: Text("Ask me about any freelance commission or opportunity"),
+              ),
+            ]
+          ),
 
-            Row(
-              spacing: 15,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                SizedBox(
-                  width: 250,
-                  child: TextField(
-                    controller: controller,
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(),
-                    ),
+          Row(
+            spacing: 15,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 250,
+                child: TextField(
+                  controller: controller,
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(),
                   ),
                 ),
-                FilledButton.icon(
-                  onPressed: onSend,
-                  icon: Icon(Icons.send),
-                  label: Text("Send"),
-                  style: IconButton.styleFrom(
-                  backgroundColor: Colors.grey[400],
-                  foregroundColor: Colors.black,
-                  padding: EdgeInsets.all(16)
-                ),)
-              ],
-            ),
-          ],
-        ))
-      )
-    ); 
+              ),
+              FilledButton.icon(
+                onPressed: !showResponse ? onSend : (hasResponse ? onSend : null),
+                icon: Icon(Icons.send),
+                label: Text("Send"),
+                style: IconButton.styleFrom(
+                backgroundColor: Colors.grey[400],
+                foregroundColor: Colors.black,
+                padding: EdgeInsets.all(16)
+              ),)
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }
 // each sub section of the ai response (after the final decision section)
@@ -218,22 +222,83 @@ class AIResponse extends StatelessWidget{
     required this.suggestionsContent
   });
 
-  TableRow prosAndConsList(){
-    String prosString = "";
-    String consString = "";
-    for (var pros in prosList) {
-      prosString += '\u2022 $pros\n';
+  Widget buildProConColumn(String title, List<String> items, Color themeColor, Color bgColor){
+    return Container(
+      decoration: BoxDecoration(
+        color:bgColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[300]!, width: 1)
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.symmetric(vertical:8, horizontal:12),
+            decoration: BoxDecoration(
+              color: themeColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(11)),
+            ),
+            child: Text(
+              title,
+              style: TextStyle(fontWeight: FontWeight.bold, color: themeColor, fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          Padding(
+            padding: EdgeInsetsGeometry.all(12.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: items.map((item) => Padding(
+                padding: EdgeInsetsGeometry.only(bottom: 8.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("• ",
+                      style: TextStyle(fontWeight: FontWeight.bold, color: themeColor, fontSize: 16)
+                    ),
+                    Expanded(child: Text(item, style: TextStyle(fontSize: 14, height: 1.3))),
+                  ],
+                ),
+              )).toList(),
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget buildSuggestionsList(String text) {
+    List<String> items;
+    if (text.contains('\n')) {
+      items = text.split('\n');
+    } else {
+      items = text.split(RegExp(r'(?=\d+\.\s)'));
     }
 
-    for (var cons in consList){
-      consString += '\u2022 $cons\n';
-    }
-    
-    return TableRow(
-      children: [
-        Center(child: Text(prosString)),
-        Center(child: Text(consString))
-      ]
+    items = items.map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+
+    return Padding(padding: EdgeInsetsGeometry.only(left: 10, right: 10, top: 10, bottom: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: items.map((item) {
+          return Padding(
+            padding: EdgeInsetsGeometry.only(bottom: 12.0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    item,
+                    style: TextStyle(fontSize: 15, height: 1.4),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 
@@ -268,23 +333,12 @@ class AIResponse extends StatelessWidget{
                 header: "Pros and Cons 🥶", 
                 response: Padding(
                   padding: EdgeInsets.only(left: 10, top: 10, bottom: 20),
-                  child: Table(
-                    defaultColumnWidth: FixedColumnWidth(150), 
-                    // columnWidths: const {
-                    //   0: FlexColumnWidth(1),
-                    //   1: FlexColumnWidth(1),
-                    // },
-                    defaultVerticalAlignment: TableCellVerticalAlignment.middle, 
-                    border: TableBorder.all(color: Colors.black, width: 1),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      TableRow(
-                        children: [
-                          Center(child: Text("Pros")),
-                          Center(child: Text("Cons"))
-                        ]
-                      ),
-
-                      prosAndConsList()
+                      Expanded(child: buildProConColumn("Pros", prosList, Colors.green[700]!, Colors.green[50]!)),
+                      SizedBox(width: 12),
+                      Expanded(child: buildProConColumn("Cons", consList, Colors.red[700]!, Colors.red[50]!)),
                     ],
                   )
                 ),
@@ -294,7 +348,7 @@ class AIResponse extends StatelessWidget{
               ResponseSection(header: "Quantifiable Impacts on You 🫵", response: quantifiableImpactContent),
 
             if(suggestionsContent.length > 1)
-              ResponseSection(header: "Suggestions 🤑", response: suggestionsContent)
+              ResponseSection(header: "Suggestions 🤑", response: buildSuggestionsList(suggestionsContent))
           ],
         )
     );
@@ -344,12 +398,12 @@ class _CommissionCompassPageState extends State<CommissionCompassPage> {
   }
 
   Future<Map<String, dynamic>> getDecision(String userInput) async {
-
     String baseUrl;
-    if(Platform.isAndroid){
+    if (kIsWeb) {
       baseUrl = "http://10.0.2.2:8000";
     } else {
-      baseUrl = "127.0.0.1:8000";
+      // Change this IP address to your device's IP address for physical device testing or http://10.0.2.2:8000 for Android Studio uses
+      baseUrl = "http://192.168.0.13:8000";
     }
     try {
       final response = await http.post(
@@ -359,7 +413,6 @@ class _CommissionCompassPageState extends State<CommissionCompassPage> {
       );
 
       if (response.statusCode == 200) {
-        print(response.body);
         return jsonDecode(response.body);
       } else {
         throw Exception("Server Error: ${response.statusCode}");
@@ -412,7 +465,7 @@ class _CommissionCompassPageState extends State<CommissionCompassPage> {
   @override
   Widget build(BuildContext context){
     return Scaffold(
-      backgroundColor: const Color(0xFFEFF6FF),
+      backgroundColor: const Color(0xFFFFFFFF),
       appBar: AppBar(
         toolbarHeight: 80,
         title: Column(
@@ -483,95 +536,53 @@ class _CommissionCompassPageState extends State<CommissionCompassPage> {
         backgroundColor: Colors.white,
       ),
 
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          return SingleChildScrollView(
-            child: ConstrainedBox(
-              // Set minimum height to the screen height
-              constraints: BoxConstraints(minHeight: constraints.maxHeight),
-              child: IntrinsicHeight( // Allows Column to expand properly inside scroll view
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (_showResponse)
-                      Column(
-                        children: [
-                          // MessageBox(userPrompt: _promptController.text),
-                          // (_hasResponse 
-                          //   ? AIResponse(decision: "Marcus should pay Shawn", keyReasoningContent: "Based on your input...", prosList: const ["shawn", "jason"], consList: const ["yusuf", "yusuf"], quantifiableImpactContent: "67 67 67 67 67", suggestionsContent: "elsa is here") 
-                          //   : const Padding(
-                          //       padding: EdgeInsets.only(top: 40, left: 10),
-                          //       child: Align(alignment: Alignment.centerLeft, child: Text("Thinking...", style: TextStyle(fontSize: 18))),
-                          //     )),
-                              for(var res in  _messageContent) ...[
-                                MessageBox(userPrompt: res["message"]),
-                                AIResponse(decision: res["decision"], keyReasoningContent: res["keyReasoningContent"], prosList: res["prosList"], consList: res["consList"], quantifiableImpactContent: res["quantifiableImpactContent"], suggestionsContent: res["suggestionsContent"])
-                              ],
-
-                              if(!_hasResponse)...[
-                                MessageBox(userPrompt: curPrompt),
-                                const Padding(
-                                  padding: EdgeInsets.only(top: 40, left: 10),
-                                  child: Align(alignment: Alignment.centerLeft, child: Text("Thinking...", style: TextStyle(fontSize: 18))),
-                                )
-                              ],
-                                 
-                              // const Spacer(),
-                              Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Row(
-                                  spacing: 15,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    SizedBox(
-                                      width: 250,
-                                      child: TextField(
-                                        controller: _promptController,
-                                        decoration: InputDecoration(
-                                          border: OutlineInputBorder(),
-                                        ),
-                                      ),
-                                    ),
-                                    FilledButton.icon(
-                                      onPressed: _hasResponse ? sendPrompt : null,
-                                      icon: Icon(Icons.send),
-                                      label: Text("Send"),
-                                      style: IconButton.styleFrom(
-                                      backgroundColor: Colors.grey[400],
-                                      foregroundColor: Colors.black,
-                                      padding: EdgeInsets.all(16)
-                                    ),)
-                                  ],
-                                ),
-                              )
+      body: SafeArea(
+          child: Stack(
+              children: [
+                if (_showResponse)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 120.0),
+                    child: ListView(
+                      padding: EdgeInsets.all(16.0),
+                      children: [
+                        for(var res in  _messageContent) ...[
+                          MessageBox(userPrompt: res["message"]),
+                          AIResponse(decision: res["decision"], keyReasoningContent: res["keyReasoningContent"], prosList: res["prosList"], consList: res["consList"], quantifiableImpactContent: res["quantifiableImpactContent"], suggestionsContent: res["suggestionsContent"])
                         ],
-                      )
-                    else
-                      Expanded(
-                        child: Center(
-                          child: CommissionCompassBody(
-                            controller: _promptController, 
-                            onSend: sendPrompt
+
+                        if(!_hasResponse)...[
+                          MessageBox(userPrompt: curPrompt),
+                          const Padding(
+                            padding: EdgeInsets.only(top: 40, left: 10),
+                            child: Align(alignment: Alignment.centerLeft, child: Text("Thinking...", style: TextStyle(fontSize: 18))),
+                          )
+                        ],
+                      ],
+                    ),
+                  ),
+
+                  AnimatedAlign(
+                    duration: const Duration(milliseconds: 500),
+                    curve: Curves.easeOutCubic,
+                    alignment: _showResponse ? Alignment.bottomCenter : Alignment.center,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CommissionCompassBody(controller: _promptController, onSend: sendPrompt, showResponse: _showResponse, hasResponse: _hasResponse),
+
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Text(
+                            "Powered by z.ai ILMU-GLM-5.1",
+                            style: TextStyle(fontSize: 12),
+                            textAlign: TextAlign.center,
                           ),
                         ),
-                      ),
-
-                    // 3. BOTTOM SECTION: Pushed to the very bottom
-                    if (_showResponse) const Spacer(), // Pushes text down when content is short
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Text(
-                        "Powered by z.ai ILMU-GLM-5.1", 
-                        style: TextStyle(fontSize: 12), 
-                        textAlign: TextAlign.center,
-                      ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
+                  ),
+              ],
+          ),
       ),
 
     );
