@@ -1,6 +1,10 @@
 # Commission Compass
 
-Commission Compass is an AI-powered decision support platform designed for freelancers to evaluate incoming project requests. By leveraging the ILMU-GLM-5.1 model via Z.AI and the Model Context Protocol (MCP), the application analyzes project scopes, budgets, and market benchmarks to provide a verdict: Accept, Negotiate or Reject.
+## Pitching Video Link
+https://youtu.be/Jywy7y6p-nw
+
+## Details
+Commission Compass is an AI-powered decision support platform by Team MergeConflictSurvivor. It was designed for freelancers to evaluate incoming project requests. By leveraging the ILMU-GLM-5.1 model via Z.AI and the Model Context Protocol (MCP), the application analyzes project scopes, budgets, and market benchmarks to provide a verdict: Accept, Negotiate or Reject.
 
 ## Project Architecture
 The project is split into two main components.  
@@ -68,3 +72,9 @@ flutter pub get
 ```bash
 flutter run
 ```
+
+#### NOTE
+> (For Android Tester)
+For main.dart, line 406, change the ip address depending on your test device.
+If it's android emulator, use 10.0.2.2:8000.  
+For physical devices, use your computer ip address with port 8000]
