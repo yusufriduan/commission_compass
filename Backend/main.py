@@ -2,9 +2,18 @@
 # then create container: docker run -it --name backend-cc-container -p 8000:8000 -e ZAI_API_KEY="your_key_here" backend-commission-compass
 from agent import process_commission
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Matches the single input from your Flutter TextField
 class commissionRequest(BaseModel):
